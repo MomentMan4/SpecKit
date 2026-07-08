@@ -113,6 +113,10 @@ in the spec, and don't invent scope during implementation — update the spec in
 
 The constitution already encodes this split, so every `/speckit-plan` respects it.
 
+👉 **For the full, numbered step-by-step** (Phase 0 setup → spec/plan in Claude → design in v0 →
+integrate/implement in Claude → QA/review/ship), see **[`SPEC-KIT.md`](./SPEC-KIT.md) § "Using
+SpecKit with Claude and v0 — step by step".**
+
 ---
 
 ## Notes & gotchas

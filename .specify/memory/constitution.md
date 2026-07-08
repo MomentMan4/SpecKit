@@ -72,15 +72,25 @@ Applies wherever a project stores data, authenticates users, or accepts input:
 For marketing/content sites the practical floor is: validate form input, protect endpoints
 against spam/abuse, and keep keys server-side. Full applications carry the whole list.
 
-### V. Right-Sized Testing
-Test depth scales with project type and risk, and the plan states the intended coverage:
+### V. Testing & Quality Assurance (Right-Sized)
+Test depth and QA rigor scale with project type and risk; the plan states the intended coverage,
+and the **Definition of Done** below gates every task.
 - **Applications**: automated tests are required for business logic, data-layer/auth boundaries,
-  and critical user flows (unit + integration; e2e for the highest-risk paths). Bugfixes add a
-  regression test.
+  and critical user flows (unit + integration; e2e for the highest-risk paths). Every bugfix adds
+  a **regression test**. Tests are deterministic — no flaky tests are left in the suite.
 - **Marketing/content sites**: test custom logic (form handling, validation, dynamic pieces);
-  visual/content correctness is verified on the Vercel preview.
-Every change is verified end-to-end by exercising the actual behavior, not just by the build
-passing.
+  verify content, visual correctness, and responsiveness on the Vercel preview.
+- **Verify end-to-end.** Every change is exercised against the actual behavior (drive the real
+  flow — the `/verify` habit), not judged done because the build passed.
+- **Code review before merge.** A second set of eyes on every change — human review and/or
+  `/code-review` + `/security-review`. No direct commits to `main`.
+- **Gates run in CI, not just locally.** Build, lint, typecheck, and tests execute automatically
+  on every PR and must pass before merge (see CI/CD in the standards).
+
+**Definition of Done** — a task/feature is done only when: spec acceptance criteria are met;
+tests are written and green; build/lint/typecheck are clean in CI; the change is code-reviewed;
+a11y and responsive checks pass; docs and `.env.example` are updated; it is verified end-to-end;
+and — for escalated projects — the required compliance controls are in place.
 
 ### VI. Ship-Ready Increments
 Every task closes in a state that builds and deploys clean: `pnpm build`, `pnpm lint`,
@@ -143,6 +153,20 @@ memory".
 - **Components**: shadcn/Radix conventions; variants via `class-variance-authority`.
 - **Errors & observability** (applications): typed error handling at boundaries, user-facing
   error/empty/loading states, and server-side error logging (no PII).
+- **Monitoring in production** (applications): error tracking + alerting (e.g. Sentry), uptime,
+  and performance monitoring (Vercel Analytics / Speed Insights) so failures are seen by the team,
+  not discovered by users. Wire this before launch, not after the first incident.
+- **SEO & metadata** (marketing/content sites and any public app page): use the Next.js Metadata
+  API for per-route `title`/`description`; Open Graph + Twitter cards; `sitemap.ts` and
+  `robots.ts`; canonical URLs; one semantic `h1` per page and descriptive image `alt` text; add
+  JSON-LD structured data where it helps. For marketing sites, SEO basics are acceptance criteria.
+- **Analytics & consent** (marketing/content): measure the key conversions the spec cares about
+  with a privacy-respecting analytics setup; gate non-essential tracking behind consent where the
+  triage requires it (Principles IV & VIII).
+- **CI/CD**: quality gates (build, lint, typecheck, tests) run automatically on every PR (e.g.
+  GitHub Actions); Vercel gives a preview per PR and ships production on the default branch.
+- **Dependencies**: pnpm lockfile committed; keep the dependency surface small (YAGNI); watch for
+  and patch known vulnerabilities; pin and vet anything security-sensitive.
 - **Environment**: all config via env vars; `.env.example` committed and current; secrets never
   committed.
 - **Package manager**: pnpm (lockfile committed).
@@ -393,12 +417,14 @@ interactive controls to get accessibility for free rather than reimplementing it
    escalated projects**) — verify cross-artifact consistency and compliance-control coverage.
 7. `/speckit-implement` — build against the tasks; keep build/lint/typecheck/tests green.
 
-Quality gates before merge: build passes, lint clean, types check, required tests pass, spec
-acceptance criteria met, input validated and mutations authorized (applications), no secrets
-committed, a11y basics honored, design rules upheld, AI capabilities evaluated against their
-eval set with keys server-side (AI features), and — for escalated projects — the compliance
-checklist satisfied and privacy controls in place. UI changes are visually reviewed (Vercel
-preview) before merge. Escalated projects also require the §6 sign-off before production launch.
+Quality gates before merge (the Definition of Done in Principle V): CI green (build, lint,
+typecheck, tests), spec acceptance criteria met, **code-reviewed**, input validated and mutations
+authorized (applications), no secrets committed, a11y and responsive checks pass, design rules
+upheld, SEO/metadata present (marketing/content), AI capabilities evaluated against their eval set
+with keys server-side (AI features), and — for escalated projects — the compliance checklist
+satisfied and privacy controls in place. UI changes are visually reviewed on the Vercel preview
+before merge; production monitoring is wired for applications. Escalated projects also require the
+§6 sign-off before production launch.
 
 ## Governance
 
@@ -413,4 +439,4 @@ principle removals/redefinitions, MINOR for new principles/sections, PATCH for c
 and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
 stay consistent with this document.
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 1.5.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
