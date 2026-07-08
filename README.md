@@ -115,9 +115,8 @@ in the spec, and don't invent scope during implementation — update the spec in
 The constitution encodes this (Principle II — "Choose the Implementer"), so every `/speckit-plan`
 records who builds each feature.
 
-👉 **For the full, numbered step-by-step** (Phase 0 setup → spec/plan in Claude → choose the
-implementer → build in v0 and/or Claude Code → QA/review/ship), see **[`SPEC-KIT.md`](./SPEC-KIT.md)
-§ "Using SpecKit with Claude and v0 — step by step".**
+👉 **New to this? Start with [`SPEC-KIT.md`](./SPEC-KIT.md)** — a plain-English guide with setup for
+every surface (desktop, web, v0), a first-feature walkthrough, Git & branching basics, and an FAQ.
 
 ---
 
