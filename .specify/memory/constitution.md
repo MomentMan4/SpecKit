@@ -97,6 +97,18 @@ get a11y for free rather than reinventing them. Respect Core Web Vitals: optimiz
 work. Applications additionally guard perceived performance: loading/skeleton and error states
 for async work, and no unbounded queries on hot paths.
 
+### VIII. Compliance & Privacy by Design (Sense-and-Escalate)
+No project proceeds past specification without a **compliance & privacy triage** (see the Risk,
+Compliance & Governance section). The default posture is to actively *sense* whether the product
+touches a regulated industry (healthcare, finance/payments, insurance, children, etc.) or
+sensitive data (PHI, PII, cardholder data, biometric, credentials) and, if so, **escalate** to
+the applicable privacy and regulatory controls rather than discovering them after launch. A
+project that clears the triage records "no regulated industry / no sensitive data" explicitly —
+silence is not a pass. Privacy and security controls are designed in from the first spec, never
+retrofitted. Claude flags a suspected compliance obligation and pauses for human confirmation
+instead of quietly building past it; this constitution is engineering guardrails, **not legal
+advice**, and genuinely regulated products require qualified legal/compliance review.
+
 ## Technology & Structure Standards
 
 - **Framework**: Next.js App Router. Routes/pages in `app/`, shared UI in `components/`,
@@ -118,20 +130,115 @@ for async work, and no unbounded queries on hot paths.
 - **Package manager**: pnpm (lockfile committed).
 - **Deploy target**: Vercel (preview per PR, production on default branch).
 
+## Risk, Compliance & Governance
+
+This section is the "building it right" backbone. It runs on every project; its weight scales
+with what the triage finds. For most marketing/content sites it is a two-minute check that comes
+back clean. For anything touching regulated industries or sensitive data, it is mandatory and
+gates launch.
+
+### 1. Compliance & Privacy Triage (run during `/speckit-specify` and revisit at `/speckit-plan`)
+
+Answer these sensing questions. **Any "yes" escalates** the project and pulls in the mapped
+controls below. Record the answers and the resulting classification in the spec/plan.
+
+- **Health**: Does it collect, store, or process health, medical, mental-health, or fitness
+  data, or serve a healthcare provider/patient context? → **PHI**; regimes: **HIPAA** (US),
+  **PHIPA/PIPEDA** (Canada), similar.
+- **Payments/finance**: Does it take card payments, hold financial account data, or provide
+  lending/investing/banking/insurance features? → **Cardholder data / financial data**; regimes:
+  **PCI-DSS**, plus sector rules (e.g. SEC/FINRA, FCA, OSFI) for financial services.
+- **Personal data**: Does it collect any personal data (name, email, IP, location, device IDs,
+  behavioral/analytics profiles, user accounts)? → **PII**; regimes: **GDPR/UK GDPR** (EU/UK),
+  **PIPEDA** and **Quebec Law 25** (Canada), **CCPA/CPRA** (California), and similar.
+- **Children**: Could users be under 13 (or under 16 in the EU)? → **COPPA** / GDPR-K /
+  age-assurance obligations.
+- **Sensitive categories**: Biometric, precise geolocation, race/ethnicity, religion, sexual
+  orientation, immigration, or union membership? → heightened "special category" protections.
+- **Enterprise/trust**: Will customers require a security attestation? → **SOC 2 / ISO 27001**
+  posture even absent a specific statute.
+- **AI**: Does it make automated decisions about people or use AI on personal data? →
+  transparency, human-review, and (EU AI Act) risk-tier considerations.
+
+If every answer is "no," classify the project **Non-regulated / no sensitive data** and proceed
+with the baseline guardrails only.
+
+### 2. Data Classification
+
+Label every data element the project handles; storage, access, and retention follow the label.
+
+- **Public** — freely shareable (marketing copy, public content).
+- **Internal** — non-sensitive operational data.
+- **Personal (PII)** — identifies or relates to a person; privacy-by-design controls apply.
+- **Sensitive** — PHI, cardholder/financial data, credentials/secrets, biometric, special
+  categories; strongest controls, minimized, encrypted, tightly access-controlled, audited.
+
+### 3. Privacy-by-Design controls (required when PII or PHI is present)
+
+- **Data minimization & purpose limitation** — collect only what a stated purpose needs; don't
+  repurpose silently.
+- **Lawful basis & consent** — capture consent where required; make it specific and revocable;
+  no pre-ticked boxes.
+- **Data-subject rights** — support access, correction, export/portability, and deletion
+  ("right to be forgotten") for personal data.
+- **Retention & deletion** — documented retention schedule with automated or procedural deletion;
+  no indefinite retention by default.
+- **Security of processing** — encryption in transit (TLS) and at rest for sensitive data;
+  least-privilege access; audit logging of access to sensitive records.
+- **Third parties** — a Data Processing Agreement (DPA) with every sub-processor that touches
+  personal data; maintain a list of sub-processors; verify their compliance posture.
+- **Transparency & incident response** — a published privacy policy matching actual practice,
+  and a breach-notification/incident-response plan with defined timelines.
+
+### 4. Baseline Guardrails (never, on any project)
+
+- No secrets, credentials, PII, or PHI in logs, error messages, analytics, client bundles, URLs,
+  or the git repo.
+- No production personal data in development, test, seed, or demo environments — use synthetic
+  data.
+- No sharing personal data with a third party (analytics, LLM APIs, email, etc.) without a DPA
+  and a lawful basis; never send PHI/PII to a service not contracted for it.
+- No hand-rolled cryptography or auth; use vetted providers.
+- No storing raw card numbers — use a compliant processor (e.g. Stripe) and keep card data out
+  of scope.
+- No launching an escalated project without the sign-off in §6.
+
+### 5. Risk Management (proportional to project type & triage)
+
+Every plan includes a short **risk assessment**: the top risks (security, privacy, compliance,
+data-loss, availability, reputational), each with likelihood × impact and a mitigation. High
+likelihood-or-impact risks become explicit tasks with owners before launch. Revisit the
+assessment when scope changes. Keep it lightweight for clean/non-regulated projects; make it
+rigorous and documented for escalated ones.
+
+### 6. Escalation & Sign-off
+
+When the triage escalates a project:
+- The applicable regime(s) and required controls are listed in the plan.
+- A **compliance checklist** is generated (`/speckit-checklist`) and must be satisfied.
+- Claude surfaces obligations and open legal questions and **does not treat them as resolved on
+  its own** — a human owner confirms the approach, and (for genuinely regulated products) a
+  qualified legal/compliance/security reviewer signs off **before production launch**.
+
 ## Development Workflow
 
 1. `/speckit-constitution` — confirm/adjust these principles and declare the **project type**.
 2. `/speckit-specify` — capture the feature's what/why + acceptance criteria (and data/auth
-   shape for applications).
+   shape for applications), and run the **compliance & privacy triage** (record the result).
 3. `/speckit-clarify` (optional) — de-risk ambiguity before planning.
-4. `/speckit-plan` — architecture and stack decisions consistent with this constitution.
-5. `/speckit-tasks` — ordered, independently shippable tasks.
-6. `/speckit-analyze` / `/speckit-checklist` (optional) — verify cross-artifact consistency.
+4. `/speckit-plan` — architecture and stack decisions consistent with this constitution;
+   revisit the triage, record the data classification, and include the risk assessment.
+5. `/speckit-tasks` — ordered, independently shippable tasks (including any risk/compliance
+   mitigations as explicit tasks).
+6. `/speckit-analyze` / `/speckit-checklist` (optional; **`/speckit-checklist` required for
+   escalated projects**) — verify cross-artifact consistency and compliance-control coverage.
 7. `/speckit-implement` — build against the tasks; keep build/lint/typecheck/tests green.
 
 Quality gates before merge: build passes, lint clean, types check, required tests pass, spec
 acceptance criteria met, input validated and mutations authorized (applications), no secrets
-committed, a11y basics honored. UI changes are visually reviewed (Vercel preview) before merge.
+committed, a11y basics honored, and — for escalated projects — the compliance checklist
+satisfied and privacy controls in place. UI changes are visually reviewed (Vercel preview)
+before merge. Escalated projects also require the §6 sign-off before production launch.
 
 ## Governance
 
@@ -139,9 +246,11 @@ This constitution supersedes ad-hoc practice for projects that adopt it. Plans a
 implementations that violate a principle must either be corrected or the principle amended
 here first — deviations are documented in the plan's Complexity/Tradeoffs section, never left
 implicit. The declared **project type** determines which "scales with project type" clauses
-apply, but no project may silently skip a principle its type calls for. Amendments bump the
-version below (semantic: MAJOR for principle removals/redefinitions, MINOR for new
-principles/sections, PATCH for clarifications) and update the Last Amended date. `CLAUDE.md`
-(if present) provides runtime guidance and must stay consistent with this document.
+apply, but no project may silently skip a principle its type calls for. A project that the
+triage escalates may not skip its compliance, privacy, or risk obligations under any deadline
+pressure — descope the feature instead. Amendments bump the version below (semantic: MAJOR for
+principle removals/redefinitions, MINOR for new principles/sections, PATCH for clarifications)
+and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
+stay consistent with this document.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 1.2.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
