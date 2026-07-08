@@ -96,10 +96,12 @@ See `specs/001-waitlist-email-capture/spec.md` in the SpecKit repo for a worked 
 
 ## 5. Using SpecKit with Claude and v0 — step by step
 
-**The division of labor:** **v0 (Vercel)** authors and iterates the **UI**; **Claude Code +
-Spec-Kit** owns the **engineering** — spec, plan, structure, logic, data, integration, tests —
-driven by the spec's tasks. The constitution encodes this split, so every `/speckit-plan`
-respects it. Here is the full loop.
+**How the tools relate:** **Spec-Kit** (run in Claude Code) owns the *thinking* — spec, plan,
+tasks — for every project. **Implementation is a choice you make per feature:** both **v0** and
+**Claude Code** are capable full-stack builders (v0 does UI *and* backend — routes, server
+actions, data wiring — not just visuals), so you assign each feature to v0, to Claude Code, or to
+a split. Whichever tool builds, the constitution's standards apply so the other can extend it.
+Here is the full loop.
 
 ### Phase 0 — One-time setup (Claude Code)
 
@@ -125,30 +127,36 @@ respects it. Here is the full loop.
    the spec/plan/tasks are consistent and that compliance controls are covered.
 
 > Outcome of Phase 1: `spec.md`, `plan.md`, `tasks.md` (and any checklist) under
-> `specs/NNN-feature/`. **Now** you know exactly which screens/components the UI needs.
+> `specs/NNN-feature/`. **Now** you know exactly what to build.
 
-### Phase 2 — Design the UI in v0 (Vercel)
+### Phase 2 — Choose the implementer (per feature)
 
-10. Open **v0.dev** and prompt it using the spec: paste the relevant user stories and the list of
-    screens/components the plan calls for. Ask for the specific pieces (e.g. "hero with email
-    capture form, footer CTA, success + error states"), not a whole app.
-11. **Feed v0 your design rules** so its output matches the constitution: the stack is Next.js
-    App Router + Tailwind + shadcn/Radix; use design tokens, a defined type scale, light + dark
-    themes, and **all states** (default/hover/focus/disabled/loading/empty/error). v0 already
-    targets this stack, which keeps the output compatible.
-12. Iterate visually in v0 until the screens look right. Keep components **presentational** — v0
-    builds the look; real data comes later in Claude.
-13. Bring the code into the repo: either **push from v0 to the connected GitHub repo/branch**, or
-    copy the generated components into `components/`. Commit on a feature branch.
+10. Decide who builds each feature/task and record it in the plan. It can differ per feature and
+    change over time:
+    - **v0** — fast in-browser iteration, visual/preview-driven work, and full-stack scaffolds you
+      want running quickly (marketing surfaces, CRUD screens, prototypes, straightforward server
+      actions/routes).
+    - **Claude Code** — complex or cross-cutting logic, large refactors, precise control, test
+      authoring, tricky integrations/migrations, and anything driven from the repo/CLI.
+    - **Split** — e.g. v0 builds the surface + scaffolds the endpoints; Claude Code hardens logic,
+      security, and tests. Either tool can also own a whole feature end to end.
 
-### Phase 3 — Integrate & implement in Claude
+### Phase 3 — Implement (v0 and/or Claude Code)
 
-14. Back in Claude Code, **`/speckit-implement`** — Claude executes the tasks: it wires the
-    v0 components to real data and server actions, adds validation/auth, replaces mock content,
-    and builds the logic the spec calls for. It **preserves v0's visual intent and Tailwind
-    classes** while moving behavior into hooks/actions/`lib` (per Principle II).
-15. As it implements, Claude writes the **tests** the tasks call for and keeps
-    `build`/`lint`/`typecheck`/tests green.
+11. **If v0 builds it:** prompt v0 with the relevant user stories and what the plan calls for, and
+    **feed it the constitution's rules** — Next.js App Router + Tailwind + shadcn/Radix, design
+    tokens, a defined type scale, light + dark themes, **all states**
+    (default/hover/focus/disabled/loading/empty/error), and — for backend work — validation, auth,
+    and a typed data layer (not the DB called straight from a component). Iterate, then **push from
+    v0 to the connected GitHub branch** (or copy the code into the repo) on a feature branch.
+12. **If Claude Code builds it:** run **`/speckit-implement`** — Claude executes the tasks across
+    the stack, writes the tests the tasks call for, and keeps `build`/`lint`/`typecheck`/tests
+    green.
+13. **Hand-offs go both ways.** When Claude Code extends v0's output (or vice-versa), the second
+    tool **preserves the first's intent** — visual design, Tailwind classes, existing structure —
+    and finishes to constitution standard: real data wired (no leftover mock content), behavior in
+    hooks/actions/services/`lib`, presentational components kept dumb. This clean-handoff contract
+    is what lets either tool pick up the other's work without a rewrite.
 
 ### Phase 4 — QA, review, and ship
 
@@ -163,8 +171,9 @@ respects it. Here is the full loop.
 
 ### The loop
 
-For the next feature, go back to **Phase 1** (`/speckit-specify`). New UI → hop to v0 (Phase 2);
-pure logic/refactors → stay in Claude. Same spec-driven backbone every time.
+For the next feature, go back to **Phase 1** (`/speckit-specify`), then **Phase 2** — pick the
+implementer that fits *this* feature (v0, Claude Code, or split). Same spec-driven backbone every
+time, regardless of who builds.
 
 ---
 

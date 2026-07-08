@@ -39,14 +39,19 @@ retro-specced. Ambiguity is resolved with `/speckit-clarify` before planning, ne
 during implementation. This applies to all project types; applications additionally spec their
 data model, auth, and key flows, not just screens.
 
-### II. Design in v0, Engineer in Claude
-UI is authored and iterated in **v0** (Vercel) and pulled into the repo; **Claude Code** owns
-structure, logic, data flow, state, integration, and refactors. Neither hand-edits the other's
-core concern without saying so: when Claude touches v0-generated components it preserves their
-visual intent and Tailwind classes; when v0 output lands, Claude wires it to real data and the
-spec's tasks rather than leaving mock content. Presentational components stay dumb; behavior
-lives in hooks, server actions, services, and lib. For applications this separation is stricter:
-UI never talks to the database or third-party APIs directly — it goes through a typed data/service layer.
+### II. Choose the Implementer — v0 or Claude Code (declare it per feature)
+Both **v0** and **Claude Code** are capable builders — v0 generates full-stack Next.js (UI **and**
+backend: route handlers, server actions, data wiring), and Claude Code implements across the whole
+stack too. There is **no fixed "v0 does UI, Claude does logic" rule**. The plan **declares who
+implements each feature or task** — v0, Claude Code, or a split — chosen by fit (see "Choosing the
+Implementer" in the workflow), and the choice can differ feature to feature and change over a
+project's life. **Whichever tool builds, the output must satisfy this constitution** — typed
+data/service layer, design tokens, all states, validation and authorization, tests — so the *other*
+tool can pick it up and extend it without a rewrite. Hand-offs are clean in both directions: real
+data wired (no leftover mock content), behavior in hooks/actions/services/`lib`, presentational
+components kept dumb, and — for applications — UI never talks to the database or third-party APIs
+directly regardless of which tool wrote it. When one tool edits the other's work, it preserves
+intent (visual design, Tailwind classes, and existing structure) rather than rewriting for style.
 
 ### III. Standard Stack (NON-NEGOTIABLE unless the spec overrides)
 The default stack is **Next.js (App Router) + TypeScript (strict) + Tailwind CSS + Radix/shadcn
@@ -264,8 +269,9 @@ When the triage escalates a project:
 
 ## AI Engineering Standards
 
-How AI capabilities are built so Claude Code and v0 produce them well and consistently. This
-section is authoritative for any feature that calls an LLM.
+How AI capabilities are built so both implementers — Claude Code and v0 — produce them well and
+consistently. This section is authoritative for any feature that calls an LLM, whichever tool
+builds it.
 
 ### 1. Choose the right model & provider (not locked to one vendor; pin the exact model)
 
@@ -356,8 +362,9 @@ change is a reviewable change, not a silent tweak.
 ## Design Rules
 
 Design standards for the v0 + Tailwind + shadcn/Radix stack so every surface — marketing site,
-app, or content site — reads as one intentional product, not assembled fragments. v0 authors and
-iterates the visuals; these rules keep its output coherent and let Claude Code extend it safely.
+app, or content site — reads as one intentional product, not assembled fragments. These apply to
+**whoever implements the UI — v0 or Claude Code** — so the output stays coherent and either tool
+can extend it safely.
 
 ### 1. Design system first
 
@@ -415,7 +422,17 @@ interactive controls to get accessibility for free rather than reimplementing it
    mitigations and AI eval tasks as explicit tasks).
 6. `/speckit-analyze` / `/speckit-checklist` (optional; **`/speckit-checklist` required for
    escalated projects**) — verify cross-artifact consistency and compliance-control coverage.
-7. `/speckit-implement` — build against the tasks; keep build/lint/typecheck/tests green.
+7. **Choose the implementer** (Principle II) — for each feature/task, decide who builds it:
+   - **v0** — fast in-browser iteration, visual/preview-driven work, and full-stack scaffolds you
+     want to see running quickly (marketing surfaces, CRUD screens, prototypes, straightforward
+     server actions/routes).
+   - **Claude Code** — complex or cross-cutting logic, large refactors, precise control, test
+     authoring, tricky integrations/migrations, and anything driven from the repo/CLI.
+   - **Split** — e.g. v0 builds the surface and scaffolds the endpoints, Claude Code hardens the
+     logic, security, and tests. Either tool can also own an entire feature end to end.
+   Record the choice in the plan; it can differ per feature and change over time.
+8. `/speckit-implement` (Claude Code) and/or build in **v0** — implement against the tasks;
+   keep build/lint/typecheck/tests green whoever builds.
 
 Quality gates before merge (the Definition of Done in Principle V): CI green (build, lint,
 typecheck, tests), spec acceptance criteria met, **code-reviewed**, input validated and mutations
@@ -439,4 +456,4 @@ principle removals/redefinitions, MINOR for new principles/sections, PATCH for c
 and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
 stay consistent with this document.
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 1.6.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08

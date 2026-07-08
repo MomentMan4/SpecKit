@@ -25,7 +25,7 @@ into tasks → let the agent implement against them, instead of prompting ad-hoc
 The `constitution.md` is the reusable core. Its five principles:
 
 1. **Spec-driven, not vibe-driven** — every feature starts as a written spec.
-2. **Design in v0, engineer in Claude** — clear division of labor.
+2. **Choose the implementer** — v0 or Claude Code (both are full-stack builders); declare it per feature.
 3. **Standard stack** — Next.js App Router + TS (strict) + Tailwind + Radix/shadcn → Vercel.
 4. **Ship-ready increments** — build/lint/typecheck green, no committed secrets.
 5. **Accessible & performant by default** — a11y and Core Web Vitals are acceptance criteria.
@@ -104,18 +104,20 @@ in the spec, and don't invent scope during implementation — update the spec in
 
 ## How Claude + v0 fit together
 
-- **v0 (Vercel)** authors and iterates the **UI** — generate components there, pull them into
-  `components/`.
-- **Claude Code + Spec-Kit** owns **engineering**: structure, logic, data flow, state,
-  integrations, refactors — driven by the spec's tasks.
-- In practice: define *what/how* in Spec-Kit → build UI in v0 → paste components in →
-  `/speckit-implement` wires them to real data and the tasks (no leftover mock content).
+- **Spec-Kit (in Claude Code)** owns the *thinking* for every project — spec, plan, tasks.
+- **Implementation is your choice per feature.** Both **v0** and **Claude Code** are capable
+  full-stack builders — v0 does UI **and** backend (routes, server actions, data wiring), not just
+  visuals. Assign each feature to v0, to Claude Code, or to a split, by fit.
+- **Whichever tool builds, the constitution's standards apply** (typed data layer, design tokens,
+  all states, validation/auth, tests) so the *other* tool can extend it without a rewrite — a
+  clean hand-off in both directions.
 
-The constitution already encodes this split, so every `/speckit-plan` respects it.
+The constitution encodes this (Principle II — "Choose the Implementer"), so every `/speckit-plan`
+records who builds each feature.
 
-👉 **For the full, numbered step-by-step** (Phase 0 setup → spec/plan in Claude → design in v0 →
-integrate/implement in Claude → QA/review/ship), see **[`SPEC-KIT.md`](./SPEC-KIT.md) § "Using
-SpecKit with Claude and v0 — step by step".**
+👉 **For the full, numbered step-by-step** (Phase 0 setup → spec/plan in Claude → choose the
+implementer → build in v0 and/or Claude Code → QA/review/ship), see **[`SPEC-KIT.md`](./SPEC-KIT.md)
+§ "Using SpecKit with Claude and v0 — step by step".**
 
 ---
 
