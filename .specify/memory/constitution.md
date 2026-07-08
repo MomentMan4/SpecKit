@@ -120,10 +120,12 @@ generator have very different allowed behaviors); (b) the **Claude model + reaso
 **guardrails** — refusal/safety handling, escalation-to-human path, and what it must never claim
 or do; (e) how it is **evaluated** (a small eval set / rubric, not vibes). AI on personal data or
 in a regulated domain inherits Principle IV and VIII in full: disclose AI use, keep a human in
-the loop for consequential decisions, and never send PHI/PII to a model or tool not contracted
-for it. Build against the current Claude model line (Claude 5 family, Opus 4.8, Haiku 4.5) — do
-not hardcode legacy model IDs "from memory"; confirm the model and API surface against current
-Anthropic docs before shipping.
+the loop for consequential decisions, and never send PHI/PII to a model, provider, or gateway not
+contracted for it. Model choice is not locked to one vendor — Claude is the house default, but
+other reputable providers (and Vercel AI Gateway for routing across them) are allowed when they
+fit; pick and pin the exact model per the AI Engineering Standards, and confirm the model and API
+surface against the provider's current docs before shipping rather than hardcoding IDs "from
+memory".
 
 ## Technology & Structure Standards
 
@@ -241,22 +243,40 @@ When the triage escalates a project:
 How AI capabilities are built so Claude Code and v0 produce them well and consistently. This
 section is authoritative for any feature that calls an LLM.
 
-### 1. Model selection (default to Claude; pin the exact ID)
+### 1. Choose the right model & provider (not locked to one vendor; pin the exact model)
 
-Use the official **Anthropic SDK** (`@anthropic-ai/sdk` for this Next.js/TS stack); never an
-OpenAI-compatible shim. Pick the smallest model that meets the quality bar and **pin the exact
-model ID** in the plan — do not leave "an LLM" unspecified, and do not invent date-suffixed IDs.
+Model choice is **not restricted to a single vendor.** Pick the model that best fits the task on
+capability, cost, latency, context window, modality, and — critically — **data-residency /
+compliance fit**, and **pin the exact model ID and provider** in the plan (no vague "an LLM", no
+invented date-suffixed IDs).
 
-| Model | Model ID | Use it for |
+- **House default: Anthropic Claude**, but **OpenAI, Google Gemini, and other reputable providers
+  are allowed** when they fit the task better or the plan justifies them. Pick the equivalent tier
+  (frontier / balanced / fast-cheap) by task, not by habit.
+- **Integration layer — the Vercel AI SDK (`ai`)** is the recommended way to call models on this
+  Next.js/Vercel stack: one provider-neutral interface (`streamText` / `generateText` /
+  `generateObject`) so swapping models/providers is a config change, not a rewrite. Use a
+  provider's official SDK directly only when you need a capability the AI SDK doesn't expose.
+- **Vercel AI Gateway is an approved option** — route model calls through one endpoint to
+  switch/fail over across providers and models, centralize keys and budgets, and get unified
+  observability without managing each provider key in the app. Prefer it when using multiple
+  providers or when you want provider failover and spend control.
+
+When using **Claude**, default to the current line below (choose the tier by task); equivalent
+tiers exist across providers.
+
+| Model (Claude) | Model ID | Use it for |
 |---|---|---|
-| Claude Opus 4.8 | `claude-opus-4-8` | **Default.** Most capable Opus-tier; complex reasoning, agents, coding, hard tasks. |
+| Claude Opus 4.8 | `claude-opus-4-8` | Most capable Opus-tier; complex reasoning, agents, coding, hard tasks. |
 | Claude Sonnet 5 | `claude-sonnet-5` | Best speed/intelligence balance; near-Opus quality on coding/agentic at lower cost — high-volume production paths. |
 | Claude Haiku 4.5 | `claude-haiku-4-5` | Fast, cheap; simple classification/extraction/short responses. |
 | Claude Fable 5 | `claude-fable-5` | Only when explicitly chosen — most demanding long-horizon reasoning; premium pricing. |
 
-Default to `claude-opus-4-8` unless the plan justifies another tier; never silently downgrade for
-cost — that's a documented decision. Model IDs and capabilities change; verify against current
-Anthropic docs rather than memory before shipping.
+Never silently downgrade for cost — that's a documented decision. Model IDs, providers, and
+capabilities change; verify against the provider's current docs rather than memory before
+shipping. **Compliance across providers:** any provider that touches personal data, PHI, or
+regulated data needs a DPA, acceptable data-residency, and no-training terms (Principles IV &
+VIII) — do not route sensitive data to a provider or gateway not contracted for it.
 
 ### 2. Right-size the surface (simplest tier that works)
 
@@ -270,16 +290,21 @@ Don't build an agent where a single call or a deterministic workflow does the jo
 
 ### 3. Build standards (defaults, unless the plan overrides)
 
-- **Adaptive thinking** (`thinking: {type: "adaptive"}`) for anything non-trivial; tune depth with
-  the `effort` parameter (`low`/`medium`/`high`/`xhigh`/`max`) rather than fixed token budgets.
-- **Stream** any response with long input/output or a high `max_tokens` to avoid timeouts.
-- **Structured outputs** (schema-constrained) whenever the app parses the result — never regex a
-  free-text blob. Validate tool inputs; parse tool JSON, don't string-match it.
-- **Prompt caching** for large stable prefixes (system prompt, retrieved context) to cut cost and
-  latency; keep the cached prefix byte-stable (no timestamps/UUIDs up front).
-- **Keys server-side only.** LLM calls run in server actions / route handlers; `ANTHROPIC_API_KEY`
-  and all provider keys never reach the client. Never put secrets, PHI, or PII in prompts, system
-  messages, or logs — they persist in traces and history.
+- **Provider-neutral integration.** Call models through the Vercel AI SDK (`ai`), the provider's
+  official SDK, or AI Gateway — never an untrusted OpenAI-compatible shim. Keep the model/provider
+  swappable rather than hard-wired through the app.
+- **Use the model's reasoning controls** where available (extended/adaptive thinking, effort or
+  verbosity settings) for non-trivial tasks, rather than fixed hacks.
+- **Stream** any response with long input/output (e.g. `streamText`) to avoid timeouts.
+- **Structured outputs** (schema-constrained, e.g. `generateObject` or the provider's structured
+  outputs) whenever the app parses the result — never regex a free-text blob. Validate tool
+  inputs; parse tool JSON, don't string-match it.
+- **Cache** large stable prefixes (system prompt, retrieved context) where the provider supports
+  prompt caching, to cut cost and latency; keep the cached prefix byte-stable (no timestamps/UUIDs
+  up front).
+- **Keys server-side only.** LLM calls run in server actions / route handlers (or via AI Gateway);
+  provider keys never reach the client. Never put secrets, PHI, or PII in prompts, system messages,
+  or logs — they persist in traces and history.
 - **Ground and cite** for RAG/agents: retrieve, pass context explicitly, prefer answers grounded
   in sources over model memory; show provenance where users act on it.
 - **Handle refusals and failures** as first-class outcomes (check `stop_reason`); degrade
@@ -388,4 +413,4 @@ principle removals/redefinitions, MINOR for new principles/sections, PATCH for c
 and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
 stay consistent with this document.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 1.4.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
