@@ -36,9 +36,16 @@ Alternative (no uv): `pipx install` from the same git URL.
 
 ---
 
-## 3. Set up a project
+## 3. Set up
 
-**Option A — `specify init` (recommended, always current):**
+Setup has two layers: **(a) add SpecKit to the project** (once per repo — the files that make the
+`/speckit-*` commands exist), then **(b) open that project on whichever surface you're using**
+(Claude Code desktop/local, Claude Code web, or v0). Then §3.5–3.6 cover what to do after running
+the specs and how to keep everything synced.
+
+### 3.1 Add SpecKit to the project (once per repo)
+
+**Option A — `specify init` (freshest templates; needs Python 3.11+ & uv):**
 
 ```bash
 cd <your-project>
@@ -46,19 +53,24 @@ specify init --here --integration claude --force
 # add --ignore-agent-tools if the `claude` binary isn't on PATH
 ```
 
-**Option B — copy from the SpecKit repo (pins these exact versions):**
+**Option B — copy from the SpecKit repo (no extra tools; pins your standards):**
 
 ```bash
 git clone --depth 1 https://github.com/MomentMan4/SpecKit /tmp/speckit
-cp -r /tmp/speckit/.claude/skills /your-project/.claude/skills   # merge, don't clobber other skills
-cp -r /tmp/speckit/.specify /your-project/.specify
+mkdir -p ./.claude
+cp -r /tmp/speckit/.claude/skills ./.claude/skills   # merge, don't clobber other skills
+cp -r /tmp/speckit/.specify ./.specify
 ```
 
 Then seed standards: copy `.specify/memory/constitution.md` from the SpecKit repo and adjust the
-two `[PROJECT-SPECIFIC]` spots (backend/auth, data layer). Commit `.claude/` and `.specify/`.
-Secrets stay in `.env*` (already gitignored) — never commit keys.
+two `[PROJECT-SPECIFIC]` spots (backend/auth, data layer). **Commit and push** `.claude/` and
+`.specify/` so every surface sees them. Secrets stay in `.env*` (already gitignored) — never
+commit keys.
 
-### What the setup adds
+Starting a brand-new project? Clone SpecKit as the seed:
+`git clone https://github.com/MomentMan4/SpecKit my-app && cd my-app && rm -rf .git && git init`.
+
+**What this adds:**
 ```
 .claude/skills/speckit-*/SKILL.md   # the /speckit-* slash commands
 .specify/
@@ -67,6 +79,80 @@ Secrets stay in `.env*` (already gitignored) — never commit keys.
   scripts/                          # helper scripts the commands call
   workflows/                        # workflow registry
 ```
+
+### 3.2 Set up Claude Code — desktop app & local CLI
+
+Desktop and CLI are the same "local Claude Code" — it loads slash commands from the open
+project's `.claude/skills/`.
+
+1. Make sure the project on disk contains `.claude/skills/speckit-*` (from §3.1).
+2. **Open the project at its repo root** — desktop: *Open Project* and select the folder (the one
+   that contains `.claude/`); CLI: `cd` into it and run `claude`.
+3. Type `/` — the `speckit-*` commands should appear. Start with `/speckit-constitution`.
+4. **If the commands don't show:** confirm `.claude/skills/speckit-constitution/SKILL.md` exists at
+   the **repo root** (not a subfolder), that you opened the project folder itself (not a parent),
+   then reopen the project / restart the session so it re-scans skills.
+
+### 3.3 Set up Claude Code on the web (claude.ai/code)
+
+The web environment is an ephemeral cloud container that **clones your repo fresh** each session.
+
+1. In claude.ai/code, start a session on the **GitHub repo + branch** that already has
+   `.claude/` + `.specify/` committed (from §3.1). The `/speckit-*` commands load automatically —
+   no install needed.
+2. Work as usual, then **commit and push before you finish** — the container is reclaimed after
+   the session, so anything unpushed is lost.
+3. *(Optional)* Add a `SessionStart` hook / setup script to the repo so each web session runs
+   `pnpm install` (and, only if you plan to `specify init` from web, installs `specify-cli`). This
+   makes the session build- and test-ready on boot. Outbound network follows the environment's
+   network policy.
+
+### 3.4 Set up v0 (web)
+
+v0 is web-only and coordinates with the rest through **GitHub** — no `.specify` files needed on
+v0's side; it just needs to read/write the same repo.
+
+1. Sign in to **v0.dev** with your Vercel account.
+2. **Connect GitHub** and point v0 at the project **repo and feature branch** (v0's GitHub sync /
+   "Push to GitHub"). This is the whole integration — v0 pushes its work to that branch, which is
+   exactly the hand-off Claude Code reads.
+3. Give v0 your standards as context: paste the relevant part of the **constitution** (design
+   rules, stack, "all states") and the spec's user stories into the prompt (or a v0 Project's
+   custom instructions) so its output matches the constitution.
+4. Deploy/preview is via Vercel, which is already the deploy target.
+
+### 3.5 After you run the specs — what to do next
+
+Once `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` have produced `spec.md`, `plan.md`,
+and `tasks.md` under `specs/NNN-feature/`:
+
+1. **Commit the spec artifacts** (`specs/…`, updated `.specify/`) and push — they're the source of
+   truth the implementer and reviewers rely on.
+2. **Choose the implementer** for the feature (v0, Claude Code, or split — see §5 Phase 2) and
+   record it in the plan.
+3. **Build it** — `/speckit-implement` in Claude Code, and/or build in v0 — on a **feature
+   branch**.
+4. **QA & review** — `/verify`, then `/code-review` (+ `/security-review` for data/auth/compliance).
+5. **Open a PR** — CI runs the gates, Vercel builds a preview; review the UI on the preview link.
+6. **Merge on the Definition of Done** (green CI, reviewed, a11y/responsive, SEO for marketing, AI
+   evals for AI features, compliance sign-off if escalated). Vercel ships production from the
+   default branch.
+7. **Next feature:** back to `/speckit-specify`. Keep the spec updated if scope changes mid-build —
+   the spec, not the code, is the record.
+
+### 3.6 Keeping your repos synced
+
+All three surfaces share state **only through Git**, so treat it as the single sync point (full
+rules in §6):
+
+- **Push everything that matters, always** — especially from Claude Code web (ephemeral).
+- **Pull before you start** on any surface; **push when you finish.**
+- **One surface per branch at a time** — don't edit the same branch in v0 and Claude Code at once.
+  Use the feature branch as the hand-off token (v0 pushes → Claude Code pulls, or vice-versa).
+- **Commit the spec files too** (`.specify/`, `specs/`), not just code — that's how the next
+  surface gets the plan and tasks.
+- If two surfaces diverged, reconcile on the branch (pull/rebase) before continuing — don't let
+  local, web, and v0 drift.
 
 ---
 
