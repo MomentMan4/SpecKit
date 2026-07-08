@@ -177,7 +177,47 @@ time, regardless of who builds.
 
 ---
 
-## 6. Notes & gotchas
+## 6. Working across surfaces — Claude Code (local + web) and v0 (web)
+
+**Short answer: SDD works the same across all of them, because the spec is in Git.** The spec,
+plan, tasks, constitution, and the `/speckit-*` skills all live in the repo (`.specify/`,
+`specs/`, `.claude/`). Every surface — Claude Code on your machine, Claude Code on the web
+(claude.ai/code), and v0 on the web — reads and writes that same repo, so the method doesn't
+change. What changes is **coordination**: treat **Git as the single sync point** and mind that the
+web Claude Code environment is **ephemeral**.
+
+**Rules that make multi-surface work reliable:**
+
+1. **Git is the source of truth — commit and push everything that matters.** Spec artifacts
+   (`specs/`, `.specify/`, `.claude/`) and code must be committed so the next surface picks them
+   up. On **Claude Code web**, the cloud environment is reclaimed after the session — anything not
+   pushed is lost. On **local**, it persists on disk, but still push so web and v0 see it.
+2. **Pull before you start, push when you finish.** Before continuing a feature on a different
+   surface, pull the latest for that branch; when done, push. This is what keeps local ↔ web ↔ v0
+   in sync.
+3. **One surface per branch at a time.** Don't edit the same branch simultaneously in v0 and
+   Claude Code — you'll create conflicts. Use the feature branch as the hand-off token: v0 pushes
+   to it, then Claude Code pulls it (or vice-versa).
+4. **The `specify` CLI is only needed to *init* a new project.** After init, the committed
+   `.claude/` skills + `.specify/` templates run the whole workflow with no CLI — so the
+   `/speckit-*` commands work in **both local and web** Claude Code identically. To start a
+   brand-new project without the CLI (e.g. on web), just copy `.claude/skills` + `.specify` from
+   the [SpecKit repo](https://github.com/MomentMan4/SpecKit) into the new repo and commit.
+5. **Claude Code web setup (optional but handy).** The web environment clones the repo fresh and
+   runs any configured setup script / `SessionStart` hook — use one to `pnpm install` (and install
+   `specify-cli` if you ever init from web) so the session is ready to build and run tests.
+   Outbound network on web follows the environment's network policy; if an install or fetch is
+   blocked, that's the policy, not SDD.
+6. **v0 is web-only and connects through GitHub.** Point v0 at the repo/feature branch; it pushes
+   its work there, which is exactly the hand-off Claude Code expects. Nothing SDD-specific to
+   configure in v0 beyond the GitHub connection.
+
+Net: pick whichever surface is convenient for a given step — spec on web, implement locally, design
+in v0, review on web — and let Git carry the state between them.
+
+---
+
+## 7. Notes & gotchas
 
 - **Slash command names use hyphens** in this Spec-Kit version: `/speckit-specify`, not
   `/speckit.specify`.

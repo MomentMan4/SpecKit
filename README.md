@@ -130,6 +130,10 @@ implementer → build in v0 and/or Claude Code → QA/review/ship), see **[`SPEC
   `specify-cli` only to `init` a brand-new project.
 - **Keep `main` green**, work on feature branches; Vercel gives a preview per PR for visual
   review of v0-authored UI.
+- **Using Claude Code locally *and* on the web, plus v0 on the web?** SDD works the same on all
+  three — the spec, skills, and code live in Git, which is the sync point. Commit + push everything
+  (the web environment is ephemeral), pull before switching surfaces, and keep one surface per
+  branch at a time. See [`SPEC-KIT.md`](./SPEC-KIT.md) § "Working across surfaces".
 
 ---
 
