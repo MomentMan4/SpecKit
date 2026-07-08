@@ -109,6 +109,22 @@ retrofitted. Claude flags a suspected compliance obligation and pauses for human
 instead of quietly building past it; this constitution is engineering guardrails, **not legal
 advice**, and genuinely regulated products require qualified legal/compliance review.
 
+### IX. AI Capabilities — Spec the Model *and* the Behavior
+When a feature uses AI (an assistant, agent, RAG/search, classifier, generator, LLM-judge,
+extraction, summarization, etc.), the spec/plan must **name the capability precisely and pin
+the model** — vague "add AI" is not a spec. Every AI capability declares: (a) the **use case and
+industry** it serves and the **scope of what it may and may not do** (stated as capabilities and
+explicit non-goals, correct for that domain — a healthcare triage assistant and a marketing copy
+generator have very different allowed behaviors); (b) the **Claude model + reasoning effort**
+(see AI Engineering Standards); (c) its **tools, data access, and grounding sources**; (d) its
+**guardrails** — refusal/safety handling, escalation-to-human path, and what it must never claim
+or do; (e) how it is **evaluated** (a small eval set / rubric, not vibes). AI on personal data or
+in a regulated domain inherits Principle IV and VIII in full: disclose AI use, keep a human in
+the loop for consequential decisions, and never send PHI/PII to a model or tool not contracted
+for it. Build against the current Claude model line (Claude 5 family, Opus 4.8, Haiku 4.5) — do
+not hardcode legacy model IDs "from memory"; confirm the model and API surface against current
+Anthropic docs before shipping.
+
 ## Technology & Structure Standards
 
 - **Framework**: Next.js App Router. Routes/pages in `app/`, shared UI in `components/`,
@@ -220,6 +236,123 @@ When the triage escalates a project:
   its own** — a human owner confirms the approach, and (for genuinely regulated products) a
   qualified legal/compliance/security reviewer signs off **before production launch**.
 
+## AI Engineering Standards
+
+How AI capabilities are built so Claude Code and v0 produce them well and consistently. This
+section is authoritative for any feature that calls an LLM.
+
+### 1. Model selection (default to Claude; pin the exact ID)
+
+Use the official **Anthropic SDK** (`@anthropic-ai/sdk` for this Next.js/TS stack); never an
+OpenAI-compatible shim. Pick the smallest model that meets the quality bar and **pin the exact
+model ID** in the plan — do not leave "an LLM" unspecified, and do not invent date-suffixed IDs.
+
+| Model | Model ID | Use it for |
+|---|---|---|
+| Claude Opus 4.8 | `claude-opus-4-8` | **Default.** Most capable Opus-tier; complex reasoning, agents, coding, hard tasks. |
+| Claude Sonnet 5 | `claude-sonnet-5` | Best speed/intelligence balance; near-Opus quality on coding/agentic at lower cost — high-volume production paths. |
+| Claude Haiku 4.5 | `claude-haiku-4-5` | Fast, cheap; simple classification/extraction/short responses. |
+| Claude Fable 5 | `claude-fable-5` | Only when explicitly chosen — most demanding long-horizon reasoning; premium pricing. |
+
+Default to `claude-opus-4-8` unless the plan justifies another tier; never silently downgrade for
+cost — that's a documented decision. Model IDs and capabilities change; verify against current
+Anthropic docs rather than memory before shipping.
+
+### 2. Right-size the surface (simplest tier that works)
+
+- **Single call** — classification, extraction, summarization, Q&A, generation.
+- **Workflow** — multi-step pipelines with code-controlled logic and tool use you orchestrate.
+- **Agent** — only for genuinely open-ended, model-driven tool use where the outcome justifies
+  the cost and errors are recoverable. Prefer the SDK's tool runner over a hand-rolled loop; reach
+  for a hosted/managed agent only when you need server-run loops or per-session sandboxes.
+
+Don't build an agent where a single call or a deterministic workflow does the job.
+
+### 3. Build standards (defaults, unless the plan overrides)
+
+- **Adaptive thinking** (`thinking: {type: "adaptive"}`) for anything non-trivial; tune depth with
+  the `effort` parameter (`low`/`medium`/`high`/`xhigh`/`max`) rather than fixed token budgets.
+- **Stream** any response with long input/output or a high `max_tokens` to avoid timeouts.
+- **Structured outputs** (schema-constrained) whenever the app parses the result — never regex a
+  free-text blob. Validate tool inputs; parse tool JSON, don't string-match it.
+- **Prompt caching** for large stable prefixes (system prompt, retrieved context) to cut cost and
+  latency; keep the cached prefix byte-stable (no timestamps/UUIDs up front).
+- **Keys server-side only.** LLM calls run in server actions / route handlers; `ANTHROPIC_API_KEY`
+  and all provider keys never reach the client. Never put secrets, PHI, or PII in prompts, system
+  messages, or logs — they persist in traces and history.
+- **Ground and cite** for RAG/agents: retrieve, pass context explicitly, prefer answers grounded
+  in sources over model memory; show provenance where users act on it.
+- **Handle refusals and failures** as first-class outcomes (check `stop_reason`); degrade
+  gracefully, never surface a raw stack trace or an empty bubble.
+
+### 4. Conversational agents & assistants (capability contract)
+
+A conversational/agentic capability is not "done" until its plan states, and its implementation
+enforces: the **model + effort**; the **persona and scope** (what it does, and explicit
+out-of-scope topics it must decline); the **tools/functions** it can call and their permissions
+(read vs. mutating, and which mutations need confirmation); the **grounding/knowledge sources**;
+the **safety guardrails and escalation-to-human** path; and **evaluation** against representative
+transcripts. Scope must fit the **industry**: regulated domains (health, finance, legal) require
+tighter scope, disclaimers, human escalation, and the Principle VIII triage — an assistant must
+not give regulated advice it isn't authorized to give.
+
+### 5. Evaluation & observability
+
+Every AI capability ships with a lightweight **eval set** (representative inputs + expected
+qualities or a rubric) run before launch and after prompt/model changes — prompt edits are
+regressions-in-waiting. Log prompts/outputs for debugging **with PII redacted**; track token
+usage and latency. Treat prompts and model IDs as **versioned artifacts**: a model or prompt
+change is a reviewable change, not a silent tweak.
+
+## Design Rules
+
+Design standards for the v0 + Tailwind + shadcn/Radix stack so every surface — marketing site,
+app, or content site — reads as one intentional product, not assembled fragments. v0 authors and
+iterates the visuals; these rules keep its output coherent and let Claude Code extend it safely.
+
+### 1. Design system first
+
+- **Tokens, not magic values.** Colors, spacing, radii, shadows, and typography come from
+  `tailwind.config.ts` design tokens and Tailwind scale utilities — no ad-hoc hex codes or
+  one-off pixel values when a token/utility exists. New tokens are added deliberately, not inlined.
+- **Reuse before rebuild.** Compose existing shadcn/Radix components and variants
+  (`class-variance-authority`) before creating new ones; one component per concept, not five
+  near-duplicates.
+
+### 2. Visual language
+
+- **Typographic scale.** A defined, limited type scale (few sizes/weights); clear hierarchy;
+  comfortable line-height and measure (~60–75 chars for body). Avoid generic defaults — no Inter/
+  Roboto/Arial-by-accident; choose type that fits the brand and use it consistently.
+- **Spacing & layout.** Consistent spacing scale and a grid; generous, rhythmic whitespace;
+  alignment and proximity express grouping. No cramped or arbitrary gaps.
+- **Color & theme.** A cohesive, limited palette with defined semantic roles (primary, accent,
+  muted, destructive, success) and accessible foreground/background pairings; light **and** dark
+  themes honored via tokens/`next-themes`. Avoid cliché AI aesthetics (e.g. purple-on-dark
+  gradients) unless the brand calls for it.
+- **Depth & motion.** Elevation and motion are purposeful and restrained; animations (framer-
+  motion) are quick, easing-based, and respect `prefers-reduced-motion`. Motion clarifies state
+  and hierarchy — it is never decoration for its own sake.
+
+### 3. Every state is designed
+
+Design and implement the full set of states, not just the happy path: **default, hover, focus,
+active, disabled, loading/skeleton, empty, and error**. Interactive elements have visible focus
+rings and adequate hit targets. Forms show inline validation and preserve input on error.
+
+### 4. Responsive & consistent
+
+- **Mobile-first, fluid.** Layouts work from small screens up using relative units and Tailwind
+  breakpoints; no fixed-width desktop-only designs; images via `next/image` with correct sizing.
+- **Consistency is a feature.** The same action looks and behaves the same everywhere; button
+  hierarchy (primary/secondary/ghost), iconography, and copy tone are uniform across the product.
+
+### 5. Accessible by construction
+
+A11y from Principle VII is a design rule too: semantic HTML, labeled controls, keyboard operability,
+logical focus order, and WCAG AA contrast are acceptance criteria. Prefer Radix primitives for
+interactive controls to get accessibility for free rather than reimplementing it.
+
 ## Development Workflow
 
 1. `/speckit-constitution` — confirm/adjust these principles and declare the **project type**.
@@ -227,18 +360,20 @@ When the triage escalates a project:
    shape for applications), and run the **compliance & privacy triage** (record the result).
 3. `/speckit-clarify` (optional) — de-risk ambiguity before planning.
 4. `/speckit-plan` — architecture and stack decisions consistent with this constitution;
-   revisit the triage, record the data classification, and include the risk assessment.
-5. `/speckit-tasks` — ordered, independently shippable tasks (including any risk/compliance
-   mitigations as explicit tasks).
+   revisit the triage, record the data classification, the risk assessment, and — for AI
+   features — the pinned model/effort and capability contract (AI Engineering Standards).
+5. `/speckit-tasks` — ordered, independently shippable tasks (including risk/compliance
+   mitigations and AI eval tasks as explicit tasks).
 6. `/speckit-analyze` / `/speckit-checklist` (optional; **`/speckit-checklist` required for
    escalated projects**) — verify cross-artifact consistency and compliance-control coverage.
 7. `/speckit-implement` — build against the tasks; keep build/lint/typecheck/tests green.
 
 Quality gates before merge: build passes, lint clean, types check, required tests pass, spec
 acceptance criteria met, input validated and mutations authorized (applications), no secrets
-committed, a11y basics honored, and — for escalated projects — the compliance checklist
-satisfied and privacy controls in place. UI changes are visually reviewed (Vercel preview)
-before merge. Escalated projects also require the §6 sign-off before production launch.
+committed, a11y basics honored, design rules upheld, AI capabilities evaluated against their
+eval set with keys server-side (AI features), and — for escalated projects — the compliance
+checklist satisfied and privacy controls in place. UI changes are visually reviewed (Vercel
+preview) before merge. Escalated projects also require the §6 sign-off before production launch.
 
 ## Governance
 
@@ -253,4 +388,4 @@ principle removals/redefinitions, MINOR for new principles/sections, PATCH for c
 and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
 stay consistent with this document.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 1.3.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
