@@ -174,6 +174,34 @@ Now you have `spec.md`, `plan.md` under `specs/…` in your repo.
 
 ---
 
+## Using SpecKit in a project that already has code
+
+You don't need a blank project. Adding SpecKit to an existing app is the same setup, with a few
+adjustments:
+
+1. **Add the files on a branch.** Do the copy step from [Set up A](#a-put-speckit-into-your-project-once-per-repo)
+   on a new branch (e.g. `chore/add-speckit`), then open a PR and merge. If the project already has
+   a `.claude/` folder, **merge** the `speckit-` skills into it — don't replace the whole folder.
+2. **Make the rulebook match what you already use.** Run `/speckit-constitution`, set the
+   **project type**, and adjust the standards + the `[PROJECT-SPECIFIC]` spots so they reflect your
+   real stack (framework, database, auth). If the repo has a `CLAUDE.md`, keep it consistent with
+   the constitution.
+3. **Adopt it going forward — you do NOT re-spec the whole app.** From here:
+   - **New feature or change** → the normal flow: `/speckit-specify` → `/speckit-plan` →
+     `/speckit-tasks` → build, on a branch.
+   - **Want SpecKit to account for what's already built?** Run **`/speckit-converge`** — it looks at
+     your existing code against a spec/plan and adds the *remaining* work as tasks. This is the
+     command made for existing projects.
+   - *(Optional)* Reverse-engineer a short spec for one important area if you want a written record
+     of how it works today — but don't try to document everything at once.
+4. **Improve old code as you pass through it.** When a new specced feature touches older code, bring
+   that part up to the constitution's standards then — steady cleanup, not one big rewrite.
+
+> First time on an existing repo? Add the files, run `/speckit-constitution` to fit your stack, then
+> use `/speckit-specify` for your **next** feature. That's enough to start.
+
+---
+
 ## Git basics — save and sync your work
 
 **Git** is the system that saves your work and shares it between tools. **GitHub** is the website
