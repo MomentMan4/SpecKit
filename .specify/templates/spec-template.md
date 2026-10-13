@@ -78,6 +78,38 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
+### Applicable States *(mandatory for features with UI or async behavior)*
+
+<!--
+  Constitution: Verification Standards §3. Mark each materially reachable state and
+  how it should behave; write "N/A — [reason]" for states that cannot occur.
+-->
+
+- **Initial / Loading / Loaded**: [expected behavior]
+- **Empty**: [expected behavior or N/A]
+- **Validation failure**: [expected behavior or N/A]
+- **Recoverable error / Fatal error**: [feedback, retained data, retry path]
+- **Permission denied / Unauthenticated**: [expected behavior or N/A]
+- **Stale / expired, Partial success, Offline / network failure**: [expected behavior or N/A]
+- **Repeated action, cancellation, concurrent change**: [expected behavior or N/A]
+
+### Acceptance Criteria & Verification *(mandatory)*
+
+<!--
+  Constitution: Principle V and Verification Standards §1. Every behavioral criterion
+  gets a stable ID and one or more verification methods:
+  [UNIT] [INTEGRATION] [E2E] [MANUAL] [EVAL]. Unmapped criteria are incomplete.
+  Mark journeys that meet the constitution's "critical" definition as (critical) —
+  they require Playwright E2E coverage.
+-->
+
+| ID | Method(s) | Criterion | Story |
+|----|-----------|-----------|-------|
+| AC-01 | [E2E] | [User-visible outcome, e.g., "Valid reset link lets the user set a new password"] (critical) | US1 |
+| AC-02 | [INTEGRATION] | [Boundary behavior, e.g., "Expired reset token is rejected"] | US1 |
+| AC-03 | [UNIT] | [Rule, e.g., "Passwords below the policy threshold are rejected"] | US1 |
+| AC-04 | [INTEGRATION][E2E] | [Security, e.g., "Tenant A cannot read or edit tenant B data"] | US2 |
+
 ## Requirements *(mandatory)*
 
 <!--
