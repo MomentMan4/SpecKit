@@ -315,6 +315,8 @@ branch and use the preview link next time; for now, revert the bad change on `ma
 - **Tasks** — the ordered to-do list built from the plan (`tasks.md`).
 - **Constitution** — your project's rulebook (`.specify/memory/constitution.md`): standards for
   stack, security, testing, design, AI, and compliance. The tools follow it.
+- **Standards** — detailed how-to rules that back the constitution (`.specify/standards/`): testing,
+  Playwright, security testing, data migrations, and AI evaluation.
 - **Repo (repository)** — your project's folder, tracked by Git and hosted on GitHub.
 - **Branch** — a separate copy of the project to work on safely; `main` is the live one.
 - **Commit** — a saved snapshot of changes, with a message.

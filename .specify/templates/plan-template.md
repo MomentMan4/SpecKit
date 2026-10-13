@@ -24,7 +24,7 @@
 
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Testing**: [unit/integration runner, e.g., Vitest; browser E2E: Playwright (or a justified alternative recorded under Exceptions) or NEEDS CLARIFICATION]
 
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
@@ -41,6 +41,18 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 [Gates determined based on constitution file]
+
+Verification gates (Principle V and Verification Standards) — all must be answered:
+
+- [ ] Every behavioral acceptance criterion in the spec has an ID and verification method(s)
+- [ ] Critical journeys identified and assigned Playwright E2E coverage (`@critical`)
+- [ ] Server-side authorization and tenant boundaries covered by integration tests (not UI only)
+- [ ] Applicable states assigned verification; exclusions justified
+- [ ] External integrations have a stub + contract/sandbox strategy
+- [ ] Migrations (if any) classified with upgrade and recovery checks
+- [ ] AI features (if any) have deterministic software tests **and** an eval plan with thresholds
+- [ ] Supported browsers/viewports named
+- [ ] Applicable `.specify/standards/` files listed; exceptions recorded below
 
 ## Project Structure
 
@@ -102,6 +114,33 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Verification Plan
+
+<!--
+  Constitution: Principle V, Verification Standards §1. One row per acceptance criterion;
+  record expected outcomes and thresholds BEFORE implementation.
+-->
+
+**Applicable standards**: [e.g., testing.md, playwright.md, security-testing.md, data-migrations.md, ai-evaluation.md]
+
+**Browsers / viewports**: [e.g., Chromium desktop on PR; + Mobile Safari, Firefox on nightly]
+
+**Test environment**: [e.g., isolated Vercel preview for the candidate commit, seeded per run]
+
+| AC | Layer(s) | States covered | Environment | Evidence required |
+|----|----------|----------------|-------------|-------------------|
+| AC-01 | E2E | loaded, validation failure | Preview | `tests/e2e/...` + CI run |
+| AC-04 | Integration + E2E | unauthenticated, forbidden, permitted | Preview | Test IDs + CI run + report |
+
+**CI gates**: [PR: lint, typecheck, unit, integration, build, Playwright @critical; main/nightly: @regression + matrix; release: ...]
+
+### Exceptions
+
+> Alternative frameworks, quarantined tests, or any other departure from a constitution MUST.
+
+| Exception | Rationale | Owner | Approver | Compensating evidence | Expiry |
+|-----------|-----------|-------|----------|-----------------------|--------|
 
 ## Complexity Tracking
 

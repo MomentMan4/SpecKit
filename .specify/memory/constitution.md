@@ -1,3 +1,28 @@
+<!--
+Sync Impact Report
+- Version change: 1.6.0 → 2.0.0 (MAJOR: Principle V redefined with enforceable MUST/SHOULD rules)
+- Modified principles:
+  - V. Testing & Quality Assurance (Right-Sized) → V. Testing & Quality Assurance
+    (Evidence-Based, Right-Sized) — full replacement: doctrines, hierarchy, Playwright default,
+    critical journeys, AC evidence, resilient tests, auth/env, contracts, regression/flake policy,
+    failure evidence, browser matrix, a11y/visual, CI/release gates, Definition of Done
+  - I. Spec-Driven — adds AC IDs, verification methods, and state listing
+  - IV. Data Integrity & Security — adds "Prove it" (negative-path + migration testing)
+  - IX. AI Capabilities — adds software tests vs evals split
+- Added sections: Verification Standards (§1–§8: traceability, security testing, state coverage,
+  API/contract testing, database change safety, observability, AI tests vs evals, evidence
+  record), Supporting Standards, Exceptions; Testing entry in Technology & Structure Standards;
+  Delivery flow in Development Workflow
+- Removed sections: none
+- Templates:
+  ✅ .specify/templates/spec-template.md (AC IDs + methods, applicable states)
+  ✅ .specify/templates/plan-template.md (Constitution Check gates, Verification Plan)
+  ✅ .specify/templates/tasks-template.md (verification paired with implementation)
+  ✅ .claude/skills/speckit-tasks/SKILL.md (tests no longer optional)
+  ✅ .specify/standards/*.md created (testing, playwright, security-testing, data-migrations,
+     ai-evaluation)
+- Follow-up TODOs: none
+-->
 # MomentMan4 Project Constitution
 
 <!--
@@ -37,7 +62,10 @@ and deliberately excludes implementation detail. Plans (`/speckit-plan`) own the
 that has no corresponding spec/task is treated as unplanned scope and must be justified or
 retro-specced. Ambiguity is resolved with `/speckit-clarify` before planning, never guessed
 during implementation. This applies to all project types; applications additionally spec their
-data model, auth, and key flows, not just screens.
+data model, auth, and key flows, not just screens. Every behavioral acceptance criterion carries
+a stable ID and a verification method, and the spec names the materially reachable states, so
+verification is traceable from spec to plan to tasks to evidence (Principle V; Verification
+Standards §1 and §3).
 
 ### II. Choose the Implementer — v0 or Claude Code (declare it per feature)
 Both **v0** and **Claude Code** are capable builders — v0 generates full-stack Next.js (UI **and**
@@ -73,29 +101,174 @@ Applies wherever a project stores data, authenticates users, or accepts input:
   keys never reach the client. Public (`NEXT_PUBLIC_*`) values are treated as public.
 - **Safe data handling.** No secrets or PII in logs; parameterized queries only (no string-built
   SQL); explicit, documented data retention. Migrations are versioned and reviewed.
+- **Prove it.** Authorization, tenant isolation, and input handling are verified by negative-path
+  tests at the server boundary, and migrations are tested against existing data with a recovery
+  strategy (Verification Standards §2 and §5).
 
 For marketing/content sites the practical floor is: validate form input, protect endpoints
 against spam/abuse, and keep keys server-side. Full applications carry the whole list.
 
-### V. Testing & Quality Assurance (Right-Sized)
-Test depth and QA rigor scale with project type and risk; the plan states the intended coverage,
-and the **Definition of Done** below gates every task.
-- **Applications**: automated tests are required for business logic, data-layer/auth boundaries,
-  and critical user flows (unit + integration; e2e for the highest-risk paths). Every bugfix adds
-  a **regression test**. Tests are deterministic — no flaky tests are left in the suite.
-- **Marketing/content sites**: test custom logic (form handling, validation, dynamic pieces);
-  verify content, visual correctness, and responsiveness on the Vercel preview.
-- **Verify end-to-end.** Every change is exercised against the actual behavior (drive the real
-  flow — the `/verify` habit), not judged done because the build passed.
-- **Code review before merge.** A second set of eyes on every change — human review and/or
-  `/code-review` + `/security-review`. No direct commits to `main`.
-- **Gates run in CI, not just locally.** Build, lint, typecheck, and tests execute automatically
-  on every PR and must pass before merge (see CI/CD in the standards).
+### V. Testing & Quality Assurance (Evidence-Based, Right-Sized)
+Testing MUST demonstrate that the implemented system satisfies its specification. A passing
+build is necessary but insufficient. Test depth MUST scale with project type and risk, and each
+test MUST prove a meaningful behavior. The detailed standards in `.specify/standards/` (see
+Supporting Standards) govern implementation conventions.
 
-**Definition of Done** — a task/feature is done only when: spec acceptance criteria are met;
-tests are written and green; build/lint/typecheck are clean in CI; the change is code-reviewed;
-a11y and responsive checks pass; docs and `.env.example` are updated; it is verified end-to-end;
-and — for escalated projects — the required compliance controls are in place.
+**Key words.** MUST states a requirement; SHOULD permits an exception only when the plan
+justifies it; MAY is optional.
+
+**Testing doctrines.**
+1. **Evidence proves behavior.** A passing build alone does not prove a feature works.
+2. **Test as low as possible, as high as necessary.** Match the test layer to the risk and the
+   behavior.
+3. **Specifications own verification.** Every behavioral acceptance criterion has a method and
+   evidence.
+4. **Validate real boundaries.** Do not mock away the boundary a test claims to prove.
+5. **Determinism and isolation are requirements.** Flaky tests are defects.
+6. **Failures and states matter.** Prove denials, recovery, and data integrity as well as
+   success.
+7. **Completion includes verification.** Regression evidence, CI gates, and review come before
+   shipping.
+
+#### Testing hierarchy
+Use the lowest-cost layer that reliably proves the behavior. Do not duplicate exhaustive
+lower-level cases in E2E, and do not mock away the system boundary under test.
+- **UNIT** — business rules, calculations, transformations, validators, policy decisions, and
+  deterministic utilities.
+- **INTEGRATION** — data access, database invariants, APIs, server actions, authorization
+  boundaries, webhooks, and provider adapters. Component tests MAY verify complex interactions
+  where useful.
+- **E2E** — Playwright user journeys spanning browser behavior, navigation, authentication,
+  persistence, and other system boundaries.
+- **MANUAL** — explicit human verification when automation is impractical, including complex
+  accessibility review.
+- **EVAL** — measured AI behavior against a versioned evaluation set (see AI Engineering
+  Standards §5).
+
+#### Default framework and critical journeys
+Browser applications MUST use **Playwright** for E2E testing unless the plan records a justified
+alternative. Non-browser products MUST select an appropriate system-testing tool. Critical
+journeys MUST have E2E coverage. A journey is **critical** when its failure blocks product
+access or primary value, corrupts important data, violates privacy or authorization, affects
+billing or account state, or causes irreversible or materially harmful actions. Cover the
+applicable login, onboarding, primary CRUD, protected actions, checkout, uploads, and critical
+AI workflows. Real integration tests MUST prove server-side and tenant boundaries even when UI
+coverage is present.
+
+#### Acceptance criteria and evidence
+Every behavioral acceptance criterion MUST have a stable ID (`AC-01`, `AC-02`, …) and one or
+more verification methods: `[UNIT]`, `[INTEGRATION]`, `[E2E]`, `[MANUAL]`, or `[EVAL]`. The plan
+MUST identify the test layer, applicable states, environment, and evidence required. Tasks MUST
+include verification work together with the implementation. Completion MUST link each criterion
+to passing test results or recorded manual/eval evidence. **Unmapped criteria are incomplete.**
+See Verification Standards §1 for the traceability format.
+
+#### Resilient browser tests
+Tests MUST assert user-visible outcomes using semantic locators and web-first assertions. Prefer
+role and accessible name, labels, and meaningful visible text before test IDs. CSS, XPath,
+generated classes, DOM hierarchy, and positional selectors require an unavoidable, documented
+reason.
+
+Tests MUST use locator auto-waiting, retrying assertions, or explicit observable events.
+Arbitrary `waitForTimeout()` calls MUST NOT be committed as a synchronization strategy;
+temporary diagnostic sleeps MUST be removed before merge. Tests MUST run independently and in
+any order, own their data, and control clocks, randomness, and fixtures where these affect
+results.
+
+#### Authentication and environment
+Authenticated suites SHOULD use setup projects and reusable `storageState` where appropriate.
+Saved state MUST be stored in a gitignored path such as `playwright/.auth/`, contain only
+dedicated non-production accounts, and never be committed or exposed as a public artifact.
+Generate fresh state per run as needed; explicitly test login, logout, expiry, and revocation
+rather than bypassing them with saved state.
+
+Mutating tests MUST isolate accounts and server-side data across workers, shards, and retries —
+browser-context isolation alone does not isolate the database. Fixtures MUST create known users,
+roles, and records, use unique run identifiers, and clean up safely or use disposable
+environments. Time-dependent assertions MUST use controlled clocks and explicit time zones.
+
+Tests MUST NOT depend on production customer data. Full-system validation SHOULD use a
+deployable preview or staging environment (e.g. the Vercel preview) with production-like
+configuration. Seed/reset mechanisms MUST be inaccessible in production. Production smoke checks
+MAY exercise approved, safe, read-only paths; any customer-visible mutation requires an
+explicitly designed and authorized test mechanism.
+
+#### External systems and contracts
+Each external integration MUST define its verification strategy. Use deterministic stubs for
+ordinary tests involving costly, destructive, rate-limited, or nondeterministic providers; stubs
+MUST match versioned provider contracts. Important integrations MUST also have appropriate real
+adapter or sandbox verification — mocked success alone is insufficient. Payments MUST use
+provider test modes. Live provider checks SHOULD run separately from stable PR gates when
+availability or cost makes them unsuitable for every change.
+
+#### Regression and flake policy
+Every confirmed defect MUST receive a regression test at the lowest appropriate layer before or
+alongside the fix. If automation is genuinely impractical, record reproducible manual evidence
+and an approved exception. Verify that the regression test reproduces the original defect when
+feasible.
+
+Flaky tests MUST be investigated as defects. CI MAY retry a limited number of times for
+diagnosis, but a retry-pass MUST remain visible as flaky and MUST NOT automatically satisfy the
+quality gate. Quarantine requires an owner, issue, reason, expiry, and compensating coverage;
+critical journeys MUST NOT silently lose verification. Increasing waits, retries, or timeouts
+without addressing the cause is not a fix.
+
+#### Failure evidence
+CI MUST retain a test report and useful failure diagnostics: traces, failure screenshots, and
+relevant browser, console, and server errors. Add video only where useful. Local retries SHOULD
+be 0; CI retries SHOULD be limited to 1 or 2. Use retain-on-failure traces (or on-first-retry
+with retries enabled), failure-only screenshots, and HTML/JUnit reports. Artifact access and
+retention MUST protect tokens, personal data, and request bodies.
+
+#### Browser and viewport coverage
+The plan MUST name the materially supported browsers and viewports. Chromium SHOULD be the
+default PR browser. Mobile-critical products MUST include representative mobile viewport/device
+coverage. Firefox and WebKit MUST be included when support commitments or risk require them;
+wider matrices MAY run on main, nightly, or release candidates. Emulation does not replace
+real-device checks for platform-specific risk.
+
+#### Accessibility and selective visual regression
+Critical journeys MUST verify relevant keyboard operation and focus behavior. Major pages and
+components SHOULD include automated accessibility checks. Teams MUST also verify accessible
+names, semantics, contrast, and complex interactions through appropriate manual review — an
+automated scan is not complete accessibility evidence (Principle VII).
+
+Visual snapshots SHOULD target stable, high-value surfaces such as design-system components,
+important dashboards, and regression-prone responsive layouts. Control fonts, animations,
+timestamps, data, operating system, and browser versions. Baseline changes MUST be reviewed
+against intended design changes, never accepted automatically to clear failures.
+
+#### Right-sized expectations
+- **Applications**: meaningful unit tests; data, auth, and API integration tests; Playwright
+  critical journeys; negative paths and regression coverage.
+- **Marketing websites**: navigation and conversion smoke tests, form validation/submission,
+  responsive behavior, accessibility, and important analytics events where practical.
+- **Content websites**: critical rendering/navigation smoke checks, applicable link/form checks,
+  responsive behavior, and accessibility. Extensive suites require corresponding product risk.
+
+#### CI and release gates
+Pull requests MUST run the applicable lint, typecheck, unit tests, integration tests, build, and
+the application's Playwright critical-path suite. Risk-based selection MUST include changed
+boundaries and dependent journeys. Broader suites MAY run on main, nightly, or release
+candidates, but required release coverage MUST pass before shipping — a scheduled job does not
+substitute for a required pre-release check.
+
+Tests MUST target the candidate build in an isolated environment. CI MUST fail on focused tests
+(`.only`), required-test failures, missing required execution, and unresolved flaky results.
+Test reports and failures MUST remain visible. Changes to models, prompts, retrieval, or tool
+policy MUST receive relevant evaluation evidence before release. Every change MUST be
+code-reviewed before merge — human review and/or `/code-review` + `/security-review`; no direct
+commits to `main`.
+
+#### Definition of Done
+A task/feature is complete only when: the specification is satisfied; **every acceptance
+criterion has evidence**; required tests and CI checks pass; critical journeys work against a
+deployable candidate; bug fixes include regression verification; applicable security, state,
+API, migration, accessibility, and responsive checks pass; and no unexplained browser, console,
+or server errors remain. Documentation and `.env.example` MUST be current. Review MUST confirm
+operational readiness, relevant evaluation results, and any explicit exceptions — and, for
+escalated projects, that the required compliance controls are in place. The full checklist lives
+in `.specify/standards/testing.md`.
 
 ### VI. Ship-Ready Increments
 Every task closes in a state that builds and deploys clean: `pnpm build`, `pnpm lint`,
@@ -140,7 +313,8 @@ contracted for it. Model choice is not locked to one vendor — Claude is the ho
 other reputable providers (and Vercel AI Gateway for routing across them) are allowed when they
 fit; pick and pin the exact model per the AI Engineering Standards, and confirm the model and API
 surface against the provider's current docs before shipping rather than hardcoding IDs "from
-memory".
+memory". AI features carry both deterministic software tests and model evaluations — neither
+substitutes for the other (Verification Standards §7).
 
 ## Technology & Structure Standards
 
@@ -168,8 +342,13 @@ memory".
 - **Analytics & consent** (marketing/content): measure the key conversions the spec cares about
   with a privacy-respecting analytics setup; gate non-essential tracking behind consent where the
   triage requires it (Principles IV & VIII).
-- **CI/CD**: quality gates (build, lint, typecheck, tests) run automatically on every PR (e.g.
-  GitHub Actions); Vercel gives a preview per PR and ships production on the default branch.
+- **CI/CD**: quality gates (build, lint, typecheck, unit/integration tests, and the Playwright
+  critical-path suite against the candidate) run automatically on every PR (e.g. GitHub Actions);
+  Vercel gives a preview per PR and ships production on the default branch. See Principle V and
+  `.specify/standards/testing.md` for the pipeline sequence.
+- **Testing** [PROJECT-SPECIFIC]: name the unit/integration runner (e.g. Vitest) in the plan;
+  browser E2E uses Playwright (`playwright.config.ts`, tests in `tests/e2e/`, auth state in a
+  gitignored `playwright/.auth/`). See `.specify/standards/playwright.md`.
 - **Dependencies**: pnpm lockfile committed; keep the dependency surface small (YAGNI); watch for
   and patch known vulnerabilities; pin and vet anything security-sensitive.
 - **Environment**: all config via env vars; `.env.example` committed and current; secrets never
@@ -357,7 +536,147 @@ Every AI capability ships with a lightweight **eval set** (representative inputs
 qualities or a rubric) run before launch and after prompt/model changes — prompt edits are
 regressions-in-waiting. Log prompts/outputs for debugging **with PII redacted**; track token
 usage and latency. Treat prompts and model IDs as **versioned artifacts**: a model or prompt
-change is a reviewable change, not a silent tweak.
+change is a reviewable change, not a silent tweak. Evals use a versioned dataset, pre-agreed
+rubrics and pass thresholds, and are compared against an approved baseline; deterministic
+behavior around the model (tool authorization, output validation, fallbacks) is covered by
+ordinary software tests with fixed model responses (Verification Standards §7,
+`.specify/standards/ai-evaluation.md`).
+
+## Verification Standards
+
+Companion clauses to Principle V. They state the durable outcomes; operational recipes,
+configuration, and examples live in `.specify/standards/` (see Supporting Standards). Each clause
+applies where the project type and triage make it relevant — the plan states which apply and
+justifies any exclusion.
+
+### 1. Acceptance criteria traceability
+
+Every spec lists its behavioral acceptance criteria with stable IDs and verification methods
+(Principle V). Use one row per criterion and allow several layers. At completion, record the
+test path/title and CI run, or the manual/eval report. Manual evidence MUST name the reviewer,
+environment, date, steps, and result.
+
+| ID | Method(s) | Criterion | Evidence |
+|---|---|---|---|
+| AC-01 | `[E2E]` | Valid password-reset link permits a new password. | `tests/e2e/auth/password-reset.spec.ts` |
+| AC-02 | `[INTEGRATION]` | Expired reset token is rejected. | `tests/integration/auth/reset-token.test.ts` |
+| AC-03 | `[UNIT]` | Passwords below the policy threshold are rejected. | `password-policy.test.ts` |
+| AC-04 | `[INTEGRATION]` `[E2E]` | Tenant A cannot read or edit tenant B data. | Direct API denial + protected UI journey |
+| AC-05 | `[MANUAL]` | Complex dialog is usable with a screen reader. | Named reviewer + steps + supported AT/browser |
+| AC-06 | `[EVAL]` | Answers meet approved groundedness thresholds. | Versioned dataset + scored evaluation report |
+
+The plan records expected outcomes and thresholds **before** implementation. Tasks pair delivery
+with verification — e.g. "Implement AC-04 server authorization and add cross-tenant read/write
+denial tests." Component checks use `[UNIT]` or `[INTEGRATION]` according to their boundary;
+visual checks are recorded under `[E2E]` or `[MANUAL]`.
+
+### 2. Security behavior must be tested
+
+Protected capabilities MUST prove rejection of unauthenticated requests, cross-user and
+cross-tenant reads and writes, and lower-privilege actions. Tests MUST bypass UI controls and
+call the server boundary directly. Verify malformed inputs, expired/revoked credentials,
+sensitive-field exposure, duplicate submissions, and idempotency. Add replay, webhook-signature,
+rate-limit, and injection cases when applicable. Assert both the rejection **and** the absence of
+forbidden side effects. Hiding the button is never an authorization test. (Extends Principle IV.)
+
+### 3. Complete state coverage
+
+Specifications MUST identify all materially reachable states and transitions: initial, loading,
+loaded, empty, validation failure, recoverable error, fatal error, permission denied,
+unauthenticated, stale/expired, partial success, and offline/network failure where relevant.
+Plans MUST assign verification to the applicable states and justify exclusions. Include
+retry/recovery, cancellation, repeated actions, and concurrent changes where they affect
+correctness. Assertions MUST verify retained data, feedback, and the next permitted actions.
+(Extends Design Rules §3.)
+
+### 4. API and contract testing
+
+Important boundaries MUST have executable verification where practical: request/response
+schemas, status and error semantics, webhook payloads, events/messages, import/export formats,
+provider adapters, and database invariants. Include invalid payloads, permissions, pagination,
+and compatibility with supported clients. Mocks MUST conform to the actual versioned contract.
+Validate provider assumptions through sandbox or contract checks; include webhook signature and
+replay tests where relevant.
+
+### 5. Database change safety
+
+Migrations MUST work against existing data and a production-like schema, not only an empty
+database. Before deployment, test: upgrade from the supported prior version with representative
+synthetic or sanitized data; backfills, new constraints, row counts, and critical invariants;
+and compatibility during rolling deployment. Check locking and runtime for high-risk changes at
+representative scale.
+
+Destructive changes MUST have an explicit recovery strategy. Prefer **expand → migrate →
+contract** where old and new application versions coexist. Verify resumability/idempotency of
+backfills when required. Document whether recovery uses rollback, roll-forward, or restore — do
+not assume every migration is reversible. High-risk changes MUST exercise the relevant recovery
+procedure and confirm no silent data loss. (Extends Principle IV.)
+
+### 6. Observability is part of correctness
+
+Critical operations SHOULD emit structured telemetry identifying the operation, time,
+correlation/request ID, outcome, and failure stage. Logs MUST exclude secrets and unnecessary
+personal data. Tests SHOULD trigger representative error paths, verify expected telemetry and
+redaction, and validate alert delivery in a controlled environment. Prevent test traffic from
+paging production responders. Verify important analytics/conversion events fire once per
+intended action where relevant.
+
+### 7. AI software tests versus AI evaluations
+
+AI features need both, and one never substitutes for the other.
+
+- **Software tests** MUST verify deterministic behavior: request construction, tool
+  authorization, structured-output validation, persistence, retries, fallbacks, guardrail
+  routing, timeouts, and error handling. Use fixed model responses for ordinary CI. Include
+  invalid output, provider failure, and denied tool execution. Authorization MUST be enforced
+  outside the model.
+- **Evaluations** MUST measure model-dependent behavior against a versioned, representative
+  dataset: correctness, groundedness, relevance, hallucination, refusal behavior, safety, and
+  domain quality. Include adversarial and risky cases such as prompt injection and unauthorized
+  tool requests. Define scoring rubrics, pass thresholds, failure severity, and human
+  adjudication for ambiguous results **before** running the evaluation.
+
+Record the model/version, prompt version, retrieval configuration, tool policy, dataset version,
+and results. Relevant evals MUST run before releasing changes to these inputs. Compare with the
+approved baseline, investigate regressions, and repeat samples where variance matters. Track
+latency and cost where product requirements depend on them. A plausible response from a manual
+demonstration is not an evaluation.
+
+### 8. Evidence record
+
+Completion evidence for each criterion is recorded in a consistent shape, for example:
+
+```text
+AC:          AC-04
+Methods:     [INTEGRATION, E2E]
+States:      unauthenticated, forbidden, permitted
+Environment: isolated preview for candidate commit
+Evidence:    test IDs + CI run + report artifact
+Result:      PASS
+Exception:   none
+```
+
+### Supporting Standards
+
+Implementation MUST follow the versioned standards in `.specify/standards/`. Plans MUST identify
+the applicable standards and document approved, time-bounded exceptions.
+
+| File | Covers |
+|---|---|
+| `testing.md` | Hierarchy, traceability, tagging, pipeline sequence, Definition of Done checklist |
+| `playwright.md` | Locators, assertions, fixtures, auth state, folder layout, CI config |
+| `security-testing.md` | Negative-path matrix for auth, tenancy, input, and webhooks |
+| `data-migrations.md` | Upgrade, backfill, and recovery checks |
+| `ai-evaluation.md` | Datasets, rubrics, thresholds, and eval records |
+
+This constitution defines required outcomes, enforcement, and exception governance; the standards
+hold evolving recipes, configuration, folder conventions, browser matrices, and artifact
+retention. Keep one authoritative copy of each operational rule and link to it rather than
+duplicating it. Standards changes are reviewed with the same care as the code they affect.
+
+**Exceptions.** An alternative framework, a quarantined test, or any other departure from a
+MUST is recorded in the plan with its rationale, owner, approver, compensating evidence, and
+expiry. Expired exceptions fail review.
 
 ## Design Rules
 
@@ -412,14 +731,18 @@ interactive controls to get accessibility for free rather than reimplementing it
 ## Development Workflow
 
 1. `/speckit-constitution` — confirm/adjust these principles and declare the **project type**.
-2. `/speckit-specify` — capture the feature's what/why + acceptance criteria (and data/auth
-   shape for applications), and run the **compliance & privacy triage** (record the result).
+2. `/speckit-specify` — capture the feature's what/why, acceptance criteria with stable IDs and
+   verification methods, and the applicable states (and data/auth shape for applications), and
+   run the **compliance & privacy triage** (record the result).
 3. `/speckit-clarify` (optional) — de-risk ambiguity before planning.
 4. `/speckit-plan` — architecture and stack decisions consistent with this constitution;
-   revisit the triage, record the data classification, the risk assessment, and — for AI
-   features — the pinned model/effort and capability contract (AI Engineering Standards).
-5. `/speckit-tasks` — ordered, independently shippable tasks (including risk/compliance
-   mitigations and AI eval tasks as explicit tasks).
+   revisit the triage, record the data classification, the risk assessment, the **verification
+   plan** (test layer, states, environment, and evidence per criterion; browsers/viewports;
+   applicable standards and exceptions), and — for AI features — the pinned model/effort and
+   capability contract (AI Engineering Standards).
+5. `/speckit-tasks` — ordered, independently shippable tasks that pair each implementation task
+   with its verification work (including risk/compliance mitigations and AI eval tasks as
+   explicit tasks).
 6. `/speckit-analyze` / `/speckit-checklist` (optional; **`/speckit-checklist` required for
    escalated projects**) — verify cross-artifact consistency and compliance-control coverage.
 7. **Choose the implementer** (Principle II) — for each feature/task, decide who builds it:
@@ -434,8 +757,17 @@ interactive controls to get accessibility for free rather than reimplementing it
 8. `/speckit-implement` (Claude Code) and/or build in **v0** — implement against the tasks;
    keep build/lint/typecheck/tests green whoever builds.
 
+**Delivery flow:** Spec → Clarify → Plan → Tasks → Implement → Test → Review → Ship. Spec
+defines behavior, criteria, and applicable states. Clarify resolves ambiguity and risk. Plan
+assigns test layers, fixtures, environments, and release gates. Tasks include verification
+alongside implementation. Implement builds behavior and tests together. Test runs the required
+suites and records evidence. Review checks evidence against every criterion and this
+constitution. Ship deploys the approved candidate, runs safe smoke checks, and verifies
+operational signals. Failed evidence returns work to the relevant earlier step.
+
 Quality gates before merge (the Definition of Done in Principle V): CI green (build, lint,
-typecheck, tests), spec acceptance criteria met, **code-reviewed**, input validated and mutations
+typecheck, unit/integration tests, Playwright critical journeys, no unresolved flaky results),
+every acceptance criterion mapped to evidence, **code-reviewed**, input validated and mutations
 authorized (applications), no secrets committed, a11y and responsive checks pass, design rules
 upheld, SEO/metadata present (marketing/content), AI capabilities evaluated against their eval set
 with keys server-side (AI features), and — for escalated projects — the compliance checklist
@@ -454,6 +786,10 @@ triage escalates may not skip its compliance, privacy, or risk obligations under
 pressure — descope the feature instead. Amendments bump the version below (semantic: MAJOR for
 principle removals/redefinitions, MINOR for new principles/sections, PATCH for clarifications)
 and update the Last Amended date. `CLAUDE.md` (if present) provides runtime guidance and must
-stay consistent with this document.
+stay consistent with this document. The standards in `.specify/standards/` are subordinate to
+this constitution: they may add operational detail but never weaken a MUST here; a conflict is
+resolved by fixing the standard or amending this document. Exceptions to a MUST follow the
+Exceptions rule under Supporting Standards (rationale, owner, approver, compensating evidence,
+expiry).
 
-**Version**: 1.6.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-07-08
+**Version**: 2.0.0 | **Ratified**: 2026-07-08 | **Last Amended**: 2026-10-13
